@@ -18,14 +18,15 @@ the next year or so.
 brew install llvm@14 cmake python@3.9
 ```
 
-Note that the command-line tools are not at their normal names, they are postfixed,
-for example `llc-mp-14` is the `llc` command.
+You may also need to run `brew link llvm@14`; I'm unsure whether this is
+necesary for later steps to work.
 
 
 
 ## Set up opam switch to use for these projects
 
-Install opam switch:
+Install opam switch; you need to use OCaml 4 for this version of `llvm`
+because it relies on naked pointers:
 ```bash
 opam switch create learn-compilers 4.14.0
 ```
@@ -33,7 +34,7 @@ opam switch create learn-compilers 4.14.0
 In any shell, before working on this project or installing ocaml
 packages and tools:
 ```
-eval "$(opam env --switch learn-compilers)"
+export OPAMSWITCH=learn-compilers
 ```
 
 Install the basic tools. Pin the dune version just in case:
@@ -41,20 +42,15 @@ Install the basic tools. Pin the dune version just in case:
 opam install -y dune.3.12.1 utop merlin ocaml-lsp-server
 ```
 
-Install llvm. First try to do it out of the box:
+Install the llvm package, pinned to version 14:
 ```
 opam install -y llvm.14.0.6
 ```
-which on my machine failed.
 
-Opam doesn't give very good errors, but you can `cd` to the project
-root at `~/.opam/learn-compilers/.opam-switch/build/llvm.16.0.6+nn`
-and run `dune build --profile release` to figure out the problem;
-in my case it was issues finding `zstd`.
-
-The solution I eventually found was to explicitly set
-`LIBRARY_PATH` using `brew --prefix`:
-
+This worked out of the box for me, but with version 16 I got errors finding
+`zstd` which required me to manually hack my library path using `brew --prefix`,
+and I want to record the fix here for future reference even though on version
+14 there was no problem:
 ``` bash
 LIBRARY_PATH=$LIBRARY_PATH:$(brew --prefix zstd)/lib/ opam install -y llvm.14.0.6
 ```
@@ -66,7 +62,17 @@ opam install -y \
   core.v0.16.2 \
 ```
 
-## Note to self: figuring this out was a real pain. Try nix next time!
+## Note to self: try nix next time!
+
+Getting this working was a huge pain, and:
+- now I'm stuck on an older llvm version for now, system-wide
+- I suspect the setup is brittle and wouldn't reliably work for someone else
+
+I hate both of these things, and `nix` is the best solution I know of; I think
+if I'm going to hack llvm in particular it's really worth seeing if I can figure
+out a nix-driven development flow so that I can reproduce my development environment
+much more reliably.
+
 
 Two blog links to get started with nix for ocaml:
 - https://dimitrije.website/posts/2023-03-04-nix-ocaml.html
