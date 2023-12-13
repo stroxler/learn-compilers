@@ -23,7 +23,7 @@
 *)
 
 
-module FCLayer0 = struct
+module Layer0 = struct
 
   module type Signature = sig
     val query0a : string -> int
@@ -41,9 +41,9 @@ end
 
 
 (* Building a new layer with record-like semantics *)
-module FCLayer1 = struct
+module Layer1 = struct
   module type Signature = sig
-    include FCLayer0.Signature
+    include Layer0.Signature
 
     val query1a : string -> int
 
@@ -51,9 +51,9 @@ module FCLayer1 = struct
   end
 
   let from_callbacks ~layer0 ~query1a ~query1b =
-    let module FCLayer0 = (val layer0: FCLayer0.Signature) in
+    let module Layer0 = (val layer0: Layer0.Signature) in
     let module Implementation = struct
-      include FCLayer0
+      include Layer0
       let query1a = query1a
       let query1b = query1b
     end in
@@ -62,9 +62,9 @@ end
 
 
 (* Building a new layer out of a value-based static module *)
-module FCLayer2 = struct
+module Layer2 = struct
   module type Signature = sig
-    include FCLayer1.Signature
+    include Layer1.Signature
 
     val query2a : string -> int
   end
@@ -77,9 +77,9 @@ module FCLayer2 = struct
   end
 
   let from_implementation ~layer1 ~value =
-    let module FCLayer1 = (val layer1: FCLayer1.Signature) in
+    let module Layer1 = (val layer1: Layer1.Signature) in
     let module Implementation = struct
-      include FCLayer1
+      include Layer1
       let query2a = ValueBased.query2a value
     end in
     (module Implementation : Signature)
@@ -100,7 +100,7 @@ module NeedsSmallerDependenciesSignature = struct
       DependenciesUnpacked.query1b the_string)
 
   let from_layer_1 ~layer1 the_string =
-    let module FCLayer1 = (val layer1 : FCLayer1.Signature) in
-    let dependencies = (module FCLayer1 : Dependencies) in
+    let module Layer1 = (val layer1 : Layer1.Signature) in
+    let dependencies = (module Layer1 : Dependencies) in
     implementation ~dependencies the_string
 end
