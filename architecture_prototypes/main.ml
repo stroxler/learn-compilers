@@ -107,21 +107,25 @@ module SimpleFirstClass = struct
 end
 
 
-(* I want to understand whether I can get value-based modules to nest as well as
-   first-class modules do. I think the key is that the value itself has to be
-   abstracted sufficiently. There are probably multiple ways to do this, but
-   here's one attempt using module signatures to get that abstraction. Note that
-   we start needing functorization which is a downside in my book. The
-   functorization, at least on this toy example, remains relatively simple but I
-   get stuck in Layer2. *)
-module ValueBasedUsingSigatures_simple_does_not_work = struct
+
+(* Here's an example of a value-and-functor based approach. I suspect that it's
+   possible to write more efficient code this way than using "pure" first-class
+   modules as above, since the modules can be made static, and all dynamic data
+   can be packed into the values. From this example I think it's doable, I don't
+   like how everything needs a functor but the complexity of the functors at
+   least seems to be tolerable (it's always parameterized over a layer + value
+   with a constraint to make the value both compatible with lower layers and
+   extensible). *)
+module ValueBasedUsingSigatures = struct
 
   module Layer0 = struct
 
     module type Signature = sig
-      type t
-      val query0a : t -> string -> int
-      val query0b : t -> string -> float
+      module Value: sig
+        type t
+      end
+      val query0a : Value.t -> string -> int
+      val query0b : Value.t -> string -> float
     end
 
     module type AbstractValue = sig
@@ -129,11 +133,18 @@ module ValueBasedUsingSigatures_simple_does_not_work = struct
       val as_layer0: t -> int
     end
 
-    module Implementation(Value: AbstractValue): Signature with type t = Value.t = struct
-      type t = Value.t
+    module Implementation(V: AbstractValue): Signature with type Value.t = V.t = struct
+      module Value = V
       let query0a value the_string = Value.as_layer0 value + String.length the_string
       let query0b value the_string = query0a value the_string |> float_of_int
     end
+
+    module ConcreteValue = struct
+      type t = int
+      let as_layer0 = Fun.id
+    end
+
+    module Concrete = Implementation(ConcreteValue)
 
   end
 
@@ -142,8 +153,8 @@ module ValueBasedUsingSigatures_simple_does_not_work = struct
 
     module type Signature = sig
       include Layer0.Signature
-      val query1a : t -> string -> int
-      val query1b : t -> string -> float
+      val query1a : Value.t -> string -> int
+      val query1b : Value.t -> string -> float
      end
 
     (* Okay let's check what it looks like to inject multiple implementations
@@ -157,8 +168,12 @@ module ValueBasedUsingSigatures_simple_does_not_work = struct
         val as_layer1: t -> string
       end
 
-      module Implementation(Value: AbstractValue): Signature with type t = Value.t = struct
-        include Layer0.Implementation(Value)
+      module Implementation
+          (L0: Layer0.Signature)
+          (V: AbstractValue with type t = L0.Value.t)
+      : Signature with type Value.t = V.t = struct
+        include L0
+        module Value = V  (* Have to add this in; the Layer0 functor strips this-layer type information *)
         let query1a value the_string = query0a value the_string + String.length (Value.as_layer1 value)
         let query1b value the_string = query1a value the_string |> float_of_int
       end
@@ -170,12 +185,26 @@ module ValueBasedUsingSigatures_simple_does_not_work = struct
         val as_layer1: t -> float
       end
 
-      module Implementation(Value: AbstractValue): Signature with type t = Value.t = struct
-        include Layer0.Implementation(Value)
+
+      module Implementation
+          (L0: Layer0.Signature)
+          (V: AbstractValue with type t = L0.Value.t)
+      : Signature with type Value.t = V.t = struct
+        include L0
+        module Value = V
         let query1a value the_string = query0a value the_string + int_of_float (Value.as_layer1 value)
         let query1b value the_string = query1a value the_string |> float_of_int
       end
     end
+
+    module ConcreteValueB = struct
+      type t = float
+      let as_layer0 = int_of_float
+      let as_layer1 = Fun.id
+    end
+
+    module ConcreteB = VariantB.Implementation(Layer0.Implementation(ConcreteValueB))(ConcreteValueB)
+
 
   end
 
@@ -183,22 +212,45 @@ module ValueBasedUsingSigatures_simple_does_not_work = struct
 
     module type Signature = sig
       include Layer1.Signature
-      val query2a : t -> string -> int
-      val query2b : t -> string -> float
-     end
-
-    (* Okay, here's where I get stuck on the value-based approach using
-    functors. I want to make a new AbstractValue that has to implement the
-    Layer1 AbstractValue protocol, but I don't want to pin to VariantA or
-    VariantB, I want to be generic over them. There's not a nice simple way to
-    do this. I'm pretty sure a complex signature incantation involving some kind
-    of type bound does exist, but this is exactly the kind of ever-expanding
-    functor logic I want to avoid based on how out-of-hand it got in
-    SharedMemory (remember we broke VSCode's syntax highlighting!) *)
+      val query2a : Value.t -> string -> int
+      val query2b : Value.t -> string -> float
+    end
 
     module type AbstractValue = sig
-      include Layer0.AbstractValue (* How do I say "some layer 1 AbstractValue?" *)
+      include Layer0.AbstractValue
+      val as_layer1: t -> int
     end
+
+    module Implementation
+      (L1: Layer1.Signature)
+      (V: AbstractValue with type t = L1.Value.t)
+    : Signature with type Value.t = V.t = struct
+      include L1
+      module Value = V
+      let query2a value the_string = Value.as_layer0 value + String.length the_string
+      let query2b value the_string = query0a value the_string |> float_of_int
+    end
+
+  end
+
+  module NeedsSmallerDependenciesSignature = struct
+
+    module type Dependencies = sig
+      module Value : sig
+        type t
+      end
+      val query0a: Value.t -> string -> int
+      val query1b: Value.t -> string -> float
+    end
+
+    module Implementation(Dependencies: Dependencies) = struct
+      let derived_function value the_string =
+        (Dependencies.query0a value the_string,
+         Dependencies.query1b value the_string)
+    end
+
+
+    module ConcreteA = Implementation(Layer1.ConcreteB)
 
   end
 
