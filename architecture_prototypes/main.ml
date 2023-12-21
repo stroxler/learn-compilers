@@ -239,28 +239,7 @@ module ValueBasedUsingFunctors = struct
   end
 
 
-
-  module NeedsSmallerDependenciesSignature = struct
-
-    module type Dependencies = sig
-      module Value : sig
-        type t
-      end
-      val query0a: Value.t -> string -> int
-      val query1b: Value.t -> string -> float
-    end
-
-    module Implementation(Dependencies: Dependencies) = struct
-      let derived_function value the_string =
-        (Dependencies.query0a value the_string,
-         Dependencies.query1b value the_string)
-    end
-
-
-    module ConcreteA = Implementation(Layer1.ConcreteB)
-
-  end
-
+  let func = ConcreteStack.Layer1.query1a
 end
 
 
@@ -274,7 +253,8 @@ module StaticBasedOnObjects = struct
     val query0 : 'a t -> string -> int
   end = struct
     type 'a t = (< layer0_value: int; ..> as 'a)
-    let query0 o the_string = o#layer0_value + String.length the_string
+    let layer0_value o = o#layer0_value
+    let query0 o the_string = layer0_value o + String.length the_string
   end
 
   module Layer1 : sig
@@ -282,7 +262,8 @@ module StaticBasedOnObjects = struct
     val query1 : 'a t -> string -> float
   end = struct
     type 'a t = (< layer1_value: float; .. > as 'a)
-    let query1 o the_string = o#layer1_value +. float_of_int (String.length the_string)
+    let layer1_value o = o#layer1_value
+    let query1 o the_string = layer1_value o +. float_of_int (String.length the_string)
   end
 
   module Stacked = struct
@@ -296,9 +277,9 @@ module StaticBasedOnObjects = struct
     module Layer0 = Layer0
     module Layer1 = Layer1
 
-    let combined_query (hooks: 'a t) the_string =
-      let v0 = (Layer0.query0 hooks the_string |> float_of_int) in
-      let v1 = (Layer1.query1 hooks the_string) in
+    let combined_query (o: 'a t) the_string =
+      let v0 = (Layer0.query0 o the_string |> float_of_int) in
+      let v1 = (Layer1.query1 o the_string) in
       v0 +. v1
   end
 
