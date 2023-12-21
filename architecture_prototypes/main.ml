@@ -116,7 +116,7 @@ end
    least seems to be tolerable (it's always parameterized over a layer + value
    with a constraint to make the value both compatible with lower layers and
    extensible). *)
-module ValueBasedUsingSigatures = struct
+module ValueBasedUsingFunctors = struct
 
   module Layer0 = struct
 
@@ -197,15 +197,6 @@ module ValueBasedUsingSigatures = struct
       end
     end
 
-    module ConcreteValueB = struct
-      type t = float
-      let as_layer0 = int_of_float
-      let as_layer1 = Fun.id
-    end
-
-    module ConcreteB = VariantB.Implementation(Layer0.Implementation(ConcreteValueB))(ConcreteValueB)
-
-
   end
 
   module Layer2 = struct
@@ -217,8 +208,8 @@ module ValueBasedUsingSigatures = struct
     end
 
     module type AbstractValue = sig
-      include Layer0.AbstractValue
-      val as_layer1: t -> int
+      include Layer1.VariantB.AbstractValue
+      val as_layer2: t -> int
     end
 
     module Implementation
@@ -232,6 +223,22 @@ module ValueBasedUsingSigatures = struct
     end
 
   end
+
+
+  module ConcreteStack = struct
+    module Value = struct
+      type t = float
+      let as_layer0 = int_of_float
+      let as_layer1 = Fun.id
+      let as_layer2 = int_of_float
+    end
+
+    module Layer0 = Layer0.Implementation(Value)
+    module Layer1 = Layer1.VariantB.Implementation(Layer0)(Value)
+    module Layer2 = Layer2.Implementation(Layer1)(Value)
+  end
+
+
 
   module NeedsSmallerDependenciesSignature = struct
 
@@ -255,3 +262,51 @@ module ValueBasedUsingSigatures = struct
   end
 
 end
+
+
+
+
+module StaticBasedOnObjects = struct
+
+
+  module Layer0 : sig
+    type 'a t = (< layer0_value: int; ..> as 'a)
+    val query0 : 'a t -> string -> int
+  end = struct
+    type 'a t = (< layer0_value: int; ..> as 'a)
+    let query0 o the_string = o#layer0_value + String.length the_string
+  end
+
+  module Layer1 : sig
+    type 'a t = (< layer1_value: float; .. > as 'a)
+    val query1 : 'a t -> string -> float
+  end = struct
+    type 'a t = (< layer1_value: float; .. > as 'a)
+    let query1 o the_string = o#layer1_value +. float_of_int (String.length the_string)
+  end
+
+  module Stacked = struct
+    type 'a t = (< layer0_value: int ; layer1_value: float ; .. > as 'a)
+
+    let create layer0_value layer1_value = object
+        method layer0_value = layer0_value
+        method layer1_value = layer1_value
+    end
+
+    module Layer0 = Layer0
+    module Layer1 = Layer1
+
+    let combined_query (hooks: 'a t) the_string =
+      let v0 = (Layer0.query0 hooks the_string |> float_of_int) in
+      let v1 = (Layer1.query1 hooks the_string) in
+      v0 +. v1
+  end
+
+  let x = (Stacked.create 5 5.5 |> Stacked.combined_query) "a string"
+
+  let show_x () = Format.print_float x
+
+end
+
+
+let () = StaticBasedOnObjects.show_x (); Format.print_newline ()
