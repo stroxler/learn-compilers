@@ -1,1 +1,19 @@
 (lang dune 3.0)
+
+(name llvm_intro)
+
+(version 0.0.10)
+
+(generate_opam_files true)
+
+(maintainers "steven.troxler at gmail dot com")
+
+(authors "steven.troxler at gmail dot com")
+
+(formatting
+  (enabled_for dune)
+)
+
+(package
+  (name llvm_intro)
+  (depends (llvm (= :"14.0.6"))))

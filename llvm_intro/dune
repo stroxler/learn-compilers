@@ -1,3 +1,4 @@
 (executable
+  (public_name llvm_intro)
   (name main)
   (libraries llvm))
