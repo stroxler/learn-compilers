@@ -1,0 +1,7 @@
+let
+  type rec = {name: string, age: int}
+  var r1: rec := rec {name="Nobody", age=1000}
+in
+  r1.name := "Somebody";
+  r1
+end

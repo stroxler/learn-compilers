@@ -1,0 +1,22 @@
+let
+  type numbers = array of int
+  var n := 5
+  var m := n + 1
+  var a1 := numbers of [1, 2, 3]
+  var a2 := numbers[5] of 10
+  var a3 := numbers[n] of 20
+  var a4 := numbers[m] of 30
+
+  function make_numbers(): numbers = numbers[3] of 40
+in
+  print_int(size a1);
+  print_line();
+  print_int(size a2);
+  print_line();
+  print_int(size a3);
+  print_line();
+  print_int(size a4);
+  print_line();
+  print_int(size make_numbers());
+  print_line()
+end

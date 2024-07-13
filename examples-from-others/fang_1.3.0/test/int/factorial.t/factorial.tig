@@ -1,0 +1,8 @@
+let
+  function factorial(x: int): int =
+    if x <= 1 then 1
+    else x * factorial(x - 1)
+in
+  print_int(factorial(6));
+  print_line()
+end

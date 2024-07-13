@@ -1,0 +1,5 @@
+let
+  type numbers = array of int
+in
+  numbers of ["a", "b", "c"]
+end

@@ -1,0 +1,4 @@
+let
+  var x: foo := 20
+in
+end

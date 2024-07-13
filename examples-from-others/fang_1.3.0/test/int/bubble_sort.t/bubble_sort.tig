@@ -1,0 +1,38 @@
+let
+  type data = array of int
+  
+  function bubble_sort(xs: data, n: int) =
+    let
+      function swap(i: int, j: int) =
+        let
+          var temp := xs[i]
+        in
+          xs[i] := xs[j];
+          xs[j] := temp
+        end
+    in
+      while 1 do
+        let
+          var swapped := 0
+        in
+          for i := 1 to n - 1 do
+            let
+              var a := xs[i - 1]
+              var b := xs[i]
+            in
+              if a > b then (swap(i - 1, i); swapped := 1)
+            end;
+
+          if not(swapped) then break
+        end
+    end
+
+  function print_data(xs: data, n: int) =
+    for i := 0 to n - 1 do (print_int(xs[i]); print_line())
+
+  var data := data of [10, 2, 5, 3, 6, 8, 4, 12]
+  var n := 8
+in
+  bubble_sort(data, n);
+  print_data(data, n)
+end

@@ -1,0 +1,284 @@
+#+TITLE: The Tiger language: an informal overview
+#+AUTHOR: Jesse Haber-Kucharsky
+
+Tiger is a small typed programming language similar to [[https://en.wikipedia.org/wiki/Pascal_(programming_language)][Pascal]]. It was created by Andrew Appel for his compiler books. This variant of Tiger differs very slightly from the one described by Appel.
+
+This document describes the language informally, mostly by example.
+
+* The language
+
+  A Tiger program is an /expression/ that results in a /value/. This is a Tiger program:
+
+  #+BEGIN_SRC
+42
+  #+END_SRC
+
+  This program computes a value of the built-in type ~int~.
+
+  This is also a Tiger program:
+  #+BEGIN_SRC
+print("Hi!\n")
+  #+END_SRC
+
+  This program computes a value of type ~unit~, which is the "value-less" type. An expression of type ~unit~ is most often useful because of the /side-effects/ it performs.
+
+  Larger Tiger programs are the result of composing expressions together.
+
+** Sequencing
+   If ~e1~, ~e2~, and ~e3~ are arbitrary expressions then the expression ~(e1; e2; e3)~ evaluates to the value of ~e3~ after first evaluating ~e1~ and ~e2~ and ignoring their values.
+
+   For example,
+   #+BEGIN_SRC
+(42;
+ print("Hi!\n");
+ "abc";
+ 10)
+   #+END_SRC
+
+   results in the value ~10~ and prints the string ~"Hi!\n"~ to the standard output device.
+
+   The "empty" sequence (~()~) is of type ~unit~.
+
+** Variables
+   The Tiger expression
+   #+BEGIN_SRC
+let
+  d1
+  d2
+  ...
+in
+  e
+end
+   #+END_SRC
+   introduces a /scope/ in which the /declarations/ ~d1~, ~d2~, etc apply in the evaluation of the expression ~e~.
+
+   There are three kinds of declarations: /variables/, /types/, and /functions/. We'll start with variables.
+
+   A variable declaration assigns the result of an expression to a name. The type of the expression can be explicitly marked, but most often it's optional.
+
+   For example,
+   #+BEGIN_SRC
+let
+  var x: int := 10
+  var y := x + 1
+  var z: string := "abc"
+in
+  x + y
+end
+   #+END_SRC
+   
+** Functions
+
+   This is a Tiger program with a simple function:
+   #+BEGIN_SRC
+let
+  function add(x: int, y: int): int = x + y
+in
+  add(2, 3)
+end
+   #+END_SRC
+
+   Functions with a result-type of ~unit~ are called /procedures/ and written as follows:
+   #+BEGIN_SRC
+let
+  function greet(name: string) = (print("Hi, "); print(name); print("!\n"))
+in
+  greet("Joe")
+end
+   #+END_SRC
+
+   A collection of functions may be grouped with the ~and~ keyword to make them /mutally-recursive/:
+   #+BEGIN_SRC
+let
+  function is_even(x: int): int = if x = 0 then 1 else is_odd(x - 1)
+  and function is_odd(x: int): int = if x = 0 then 0 else is_even(x - 1)
+in
+  is_even(41)
+end
+   #+END_SRC
+   
+   Functions may be /nested/ inside of other functions arbitrarily:
+   #+BEGIN_SRC
+let
+  function triple(s: string): string =
+    let
+      var buffer := ""
+      function append(s: string) = buffer := concat(buffer, s)
+    in
+      append(s);
+      append(s);
+      append(s);
+      buffer
+    end
+in
+  triple("abc")
+end
+   #+END_SRC
+
+** Types
+
+   There are two built-in types in Tiger: ~int~ and ~string~.
+
+   There are three ways to define new types.
+
+*** Arrays
+
+    An /array/ type is defined in terms of the type of its elements. Two different array types with the same element type are considered to be *distinct types*.
+
+    For example,
+    #+BEGIN_SRC
+let
+  type numbers = array of int
+  type scores = array of int
+  var x := numbers[10] of 100
+  var y := scores of [1, 2, 3]
+in
+  x[8] := 200;
+  print_int(y[0])
+end
+    #+END_SRC
+
+    Here, ~numbers~ and ~scores~ are distinct types that cannot be interchanged.
+
+    ~x~ is a value of type ~numbers~ that initially consists of 100 elements of the value ~10~.
+
+    ~y~ is a value of type ~scores~ that consists of three elements: 1, 2, 3.
+
+    The expression ~size e~ is an ~int~ value which is the declared size of the array-valued expression ~e~.
+
+*** Records
+
+    A /record/ type is a value that consists of named sub-values called /fields/.
+
+    #+BEGIN_SRC
+let
+  type person = {name: string, age: int}
+  var p1 := person {name="Joe", age=66}
+  var p2: person := nil
+in
+  print(p.name)
+end
+    #+END_SRC
+
+    As with arrays, every record type is distinct even if it has the same fields.
+
+    The special value ~nil~ can be assigned to record values. A variable can only be initially assigned the value ~nil~ if its type is explicitly marked (as with ~p2~ here).
+
+    Records may be defined recursively:
+    #+BEGIN_SRC
+let
+  type list = {head: int, tail: list}
+in
+  list {head=10, tail=list {head=20, tail=list {head=30, tail=nil}}}
+end
+    #+END_SRC
+
+*** Aliases
+
+    A type /alias/ defines a new name for an existing type. The two types are treated interchangably.
+
+    For example,
+    #+BEGIN_SRC
+let
+  type width = int
+  var x: width := 10
+  var y: int := 20
+in
+  x + y
+end
+    #+END_SRC
+
+*** Mutually-recursive types
+
+    Type declarations separated by the keyword ~and~ form a /mutually-recursive/ group.
+
+    For example,
+    #+BEGIN_SRC
+let
+  type tree = {root: item, children: forest}
+  and type forest = {head: tree, tail: forest}
+  and type item = string
+
+  function leaf(x: string): tree = tree {root=x, children=nil}
+  function cons(x: tree, f: forest): forest = forest {head=x, tail=f}
+in
+  tree {root="Z", children=cons(leaf("A"), cons(leaf("B"), cons(leaf("C"), nil)))}
+end  
+    #+END_SRC
+
+** Values
+
+*** Integers and strings
+
+    Integers in Tiger are always 64 bit with two's complement representation. The arithmetic operators ~+~, ~-~, ~*~, and ~/~ behave as one would expect.
+
+    ~e1 & e2~ is non-zero when both ~e1~ and ~e2~ are non-zero. ~e1 | e2~ is non-zero when either ~e1~ or ~e2~ is non-zero. ~not(e)~ is non-zero when ~e~ is zero and zero when ~e~ is non-zero.
+
+    String literal like ~"Hi"~ support a limited number of "escape" characters, like ~"\n"~.
+
+*** ~while~-loops and ~break~
+
+    A ~while~ loop evaluates an ~int~-valued /condition/ and if the result is non-zero, evaluates a ~()~-valued /body/.
+
+    #+BEGIN_SRC
+let
+  var x := 10
+in
+  while x <> 0 do
+    (print_int(x);
+     print_line();
+     x := x - 1)
+done
+    #+END_SRC
+
+    The /break/ keyword may be used to terminate a /while/ loop early.
+
+    #+BEGIN_SRC
+while 1 do break
+    #+END_SRC
+
+*** ~for~ loops
+
+    #+BEGIN_SRC
+for i := 1 to 10 do (print_int(i); print_line())
+    #+END_SRC
+
+    ~break~ may also be used inside a ~for~ loop to terminate early.
+
+*** Comparisons
+
+    Two values of the same type may always be compared for equality (~=~) or inequality (~<>~).
+
+    Integers and strings are compared /structurally/: two expressions with the same logical value compare equal. As a consequence, two distinct ~string~ values with the same contents cannot be distinguished in Tiger programs. These values may also be compared according to the ~<~, ~<=~, ~>~, and ~>=~ operators. Strings are compared lexicographically.
+
+    The equality of record and array values is defined according to physical identity.
+
+*** Operator precedence
+
+    |            Operator             | Precedence | Associativity |
+    |---------------------------------+------------+---------------|
+    |               <c>               |    <c>     |      <c>      |
+    |              ~:=~               |     1      |               |
+    |           ~&~, \vert            |     2      |               |
+    | ~=~, ~<>~, ~<~, ~<=~, ~>~, ~>=~ |     3      |               |
+    |            ~+~, ~-~             |     4      |     left      |
+    |            ~*~, ~/~             |     5      |     left      |
+    |           ~-~, ~size~           |     6      |     right     |
+    
+* Built-ins
+
+  Tiger has some functions built-in to the language.
+
+  - ~chr(x: int): string~ -- A single-character string consisting of the character with ASCII code ~x~. The program aborts with an error if ~x~ is not a valid ASCII character code.
+  - ~ord(s: string): int~ -- The ASCII character code for the first character in the string ~s~. If the string is empty, the result is ~-1~.
+  - ~concat(s1: string, s2: string): string~ -- The concatenation of two strings into a new string.
+  - ~len(s: string): int~ -- The number of ASCII characters in a string.
+  - ~substring(s: string, start: int, count: int): string~ -- A new string consisting of ~count~ characters from ~s~, beginning at the zero-based index ~start~. The program aborts with an error if the substring is out of range of ~s~.
+  - ~print(s: string)~ -- Print a string to the standard output device. If there's a system error, the program aborts.
+  - ~print_int(x: int)~ -- Print an integer in base-10 to the standard output device. If there's a system error, the program aborts.
+  - ~print_line()~ -- Print a newline character to the standard output device. If there's a system error, the program aborts.
+  - ~flush()~ -- Flush the standard output device, which is buffered.
+  - ~read_char(): string~ -- Read a single-character string from the standard input device. If no character is available, the result is the empty string. If there's a system error, the program aborts.
+  - ~random(a: int, b: int): int~ -- Compute a pseudo-random value in the range $\left[a,b\right)$. If the range is invalid, the program aborts.
+  - ~seed(x: int)~ -- Seed the random generator.
+  - ~error(message: string)~ -- Abort the program with a user-defined message.

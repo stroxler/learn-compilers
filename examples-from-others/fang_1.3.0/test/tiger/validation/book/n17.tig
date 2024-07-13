@@ -1,0 +1,7 @@
+let
+  type tree = {key: int, children: list}
+  var d: int := 0
+  type list = {head: tree, tail: list}
+in
+  d
+end

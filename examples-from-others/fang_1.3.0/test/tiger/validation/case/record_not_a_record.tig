@@ -1,0 +1,5 @@
+let
+  type numbers = array of int
+in
+  numbers {name="Joe", age=66}
+end

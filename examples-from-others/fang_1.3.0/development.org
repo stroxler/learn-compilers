@@ -1,0 +1,105 @@
+#+TITLE: Fang development guide
+#+AUTHOR: Jesse Haber-Kucharsky
+
+These are instructions for how to perform common tasks for Fang development.
+
+* Setting up a development environment
+
+  Fang depends on a number of tools for its development -- for tasks such as documentation generation and editor enhancements -- that are not required for just installing it.
+
+  The [[https://nixos.org/][Nix package manager]] ensures that /all/ of Fang's dependencies (including the OCaml compiler) are precisely "pinned" to specific versions in a reproducible way. Fang uses an upcoming features of Nix called [[https://www.tweag.io/blog/2020-05-25-flakes/]["flakes"]], so a version of ~nix~ with support for flakes is required.
+
+  The following command will start a new Bash shell with all of Fang's dependencies available:
+  #+BEGIN_SRC
+$ nix develop
+  #+END_SRC
+
+  A tool called [[https://direnv.net/][direnv]] can automate this process so that the environment gets updated whenever the current working directory changes. To enable this for Fang, rename the included template:
+  #+BEGIN_SRC
+$ cp envrc.template .envrc
+$ direnv allow
+  #+END_SRC
+
+* Building
+
+  Fang uses the [[https://dune.build/][Dune]] build system for OCaml. To build the entire repository:
+  #+BEGIN_SRC
+$ dune build
+  #+END_SRC
+
+  It's also possible to execute either ~fangc~ or ~fangu~ such that it's always up-to-date with its sources:
+  #+BEGIN_SRC
+$ dune exec fangc < foo.tig
+  #+END_SRC
+
+* Testing
+
+  Fang has a number of tests.
+
+  Unit and integration tests are executed via
+  #+BEGIN_SRC
+$ dune test
+  #+END_SRC
+
+  Many of Fang's tests compare its output to predefined reference output. When something in Fang changes so that the output doesn't match, ~dune test~ will print out a diff. If the changes are correct (so that a new reference should be saved), then the files can updated:
+  #+BEGIN_SRC
+# Change code.
+# ..
+
+# Test.
+$ dune test
+
+# Accept changes.
+$ dune promote
+  #+END_SRC
+
+  Fang also has built-in "distribution" tests to ensure that it can be installed with the OCaml package manager. These tests use containers for isolation, and they take a few minutes.
+  #+BEGIN_SRC
+$ make test-dist
+  #+END_SRC
+
+* Source-code formatting
+  Fang uses an automatic code formatter for both OCaml source code and also Dune files. To format all files:
+  #+BEGIN_SRC
+$ make format
+  #+END_SRC
+
+* Interactive REPL
+  It's possible to start an interactive OCaml REPL ("top-level", on OCaml parlance) with all of Fang's library code accessible:
+  #+BEGIN_SRC
+$ dune utop
+  #+END_SRC
+
+* Documentation generation
+  There are two kinds of Fang documentation: API documentation for the underlying OCaml library, and "human-friendly" documentation like you're currently reading.
+
+** API documentation
+   Documentation is automatically generated from annotated ~.mli~ files via
+   #+BEGIN_SRC
+$ dune build @doc
+   #+END_SRC
+
+   However, sometimes the paths of identifiers are longer than they could be (see [[https://github.com/ocaml/odoc/issues/636][this issue]]) so Fang post-processes the output. To build this post-processed output, execute
+   #+BEGIN_SRC
+$ make doc-api
+   #+END_SRC
+
+   (This approach to post-processing is adopted from the [[http://aantron.github.io/lambdasoup/][Lambdasoup]] project.)
+
+   After it's been generated, the documentation is available starting at  ~_build/default/_doc/_html/fang/index.html~.
+
+** Other documents
+   Overview documentation is written in [[https://orgmode.org/][org-mode]] and exported to HTML using Emacs itself.
+
+   Generate these documents via:
+   #+BEGIN_SRC
+$ make doc-human
+   #+END_SRC
+
+* Release check-list
+  - [ ] ~make test-license~
+  - [ ] ~make test-flake~
+  - [ ] ~make test-dist~
+  - [ ] Tag release
+  - [ ] ~make dist~ and upload to S3
+  - [ ] Update published API documents

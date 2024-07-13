@@ -1,0 +1,7 @@
+(library
+ (name fang_asm)
+ (public_name fang.asm)
+ (libraries fang.iter fang.vm)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect)))

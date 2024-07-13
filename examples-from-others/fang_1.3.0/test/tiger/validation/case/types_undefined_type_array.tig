@@ -1,0 +1,4 @@
+let
+  type numbers = array of foo
+in
+end

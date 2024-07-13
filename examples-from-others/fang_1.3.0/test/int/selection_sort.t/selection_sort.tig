@@ -1,0 +1,27 @@
+let
+  type input = array of int
+  
+  function selection_sort(a: input, n: int) =
+    for j := 0 to n - 2 do
+      let
+        var k := j
+      in
+        (for i := j + 1 to n - 1 do
+           if a[i] < a[k] then k := i;
+         let
+           var t := a[j]
+         in
+           a[j] := a[k];
+           a[k] := t
+         end)
+      end
+
+  var a := input of [5, 3, 4, 1, 2]
+  var n := 5
+in
+  selection_sort(a, n);
+
+  for i := 0 to n - 1 do
+    (print_int(a[i]);
+     print_line())
+end

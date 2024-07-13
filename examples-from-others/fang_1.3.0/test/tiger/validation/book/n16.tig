@@ -1,0 +1,10 @@
+ let
+   type a = c
+   and type b = a
+   and type c = d
+   and type d = a
+
+   var x: a := 10
+ in
+   x
+ end

@@ -1,0 +1,11 @@
+let
+  type person = {name: string, age: int}
+  var p := person {name="Joe", age=42}
+  var q := p
+in
+  // Statically known to be non-nil
+  print(p.name);
+  print_line();
+  print(q.name);
+  print_line()
+end

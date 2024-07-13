@@ -1,0 +1,3 @@
+(executable
+ (public_name fangu)
+ (libraries cmdliner fang.cmake fmt.cli fmt.tty logs.cli logs.fmt))

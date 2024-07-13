@@ -1,0 +1,6 @@
+let
+  function f1(a: int, b: string) = f2(a + 1)
+  and function f2(d: int) = f1(d, "str")
+in
+  f1(0, "str2")
+end

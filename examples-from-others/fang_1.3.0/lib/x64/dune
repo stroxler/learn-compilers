@@ -1,0 +1,7 @@
+(library
+ (name fang_x64)
+ (public_name fang.x64)
+ (libraries fang.alloc fang.translate)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect)))

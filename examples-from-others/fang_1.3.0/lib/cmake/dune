@@ -1,0 +1,4 @@
+(library
+ (name fang_cmake)
+ (public_name fang.cmake)
+ (libraries bos))

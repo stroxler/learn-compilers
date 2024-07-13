@@ -1,0 +1,4 @@
+(library
+ (name test_support)
+ (libraries fang)
+ (modules Test_support))

@@ -1,0 +1,6 @@
+let
+  type a = b
+  and type b = c
+  and type c = a
+in
+end

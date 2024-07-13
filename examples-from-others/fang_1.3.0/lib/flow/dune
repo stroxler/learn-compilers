@@ -1,0 +1,7 @@
+(library
+ (name fang_flow)
+ (public_name fang.flow)
+ (libraries fang.asm)
+ (inline_tests)
+ (preprocess
+  (pps ppx_inline_test)))

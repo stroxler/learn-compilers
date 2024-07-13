@@ -1,0 +1,7 @@
+(library
+ (name fang_iter)
+ (public_name fang.iter)
+ (libraries fmt)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect)))

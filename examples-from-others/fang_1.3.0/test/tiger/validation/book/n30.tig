@@ -1,0 +1,7 @@
+let
+  type arr1 = array of int
+  type arr2 = array of int
+  var a1: arr1 := arr2[10] of 0
+in
+  a1
+end

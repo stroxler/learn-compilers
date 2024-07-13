@@ -1,0 +1,15 @@
+let
+  type list = { head: int, tail: list }
+
+  function cons(x: int, xs: list): list = list { head=x, tail=xs }
+
+  var xs := cons(10, cons(20, cons(30, nil)))
+
+  function sum(xs: list): int =
+    if xs = nil then 0
+    else xs.head + sum(xs.tail)
+in
+  print_int(sum(xs));
+  print_line()
+end
+

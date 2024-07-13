@@ -1,0 +1,16 @@
+let
+  function multiply(a: int, b: int): int =
+    let
+      var d := 0
+      var e := a
+    in
+      while 1 do
+        (d := d + b;
+         e := e - 1;
+         if e <= 0 then break);
+      d
+    end
+in
+  print_int(multiply(3, 12));
+  print_line()
+end

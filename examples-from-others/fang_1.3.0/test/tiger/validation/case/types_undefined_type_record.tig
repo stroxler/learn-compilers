@@ -1,0 +1,4 @@
+let
+  type person = {name: foo, age: int}
+in
+end

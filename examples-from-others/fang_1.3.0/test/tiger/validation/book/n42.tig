@@ -1,0 +1,25 @@
+let
+  type arr1 = array of int
+  type rec1 = {name: string,
+	       address: string,
+	       id: int,
+	       age: int}
+  type arr2 = array of rec1
+  type rec2 = {name: string,
+	       dates: arr1}
+  type arr3 = array of string
+  var a1 := arr1[10] of 0
+  var a2 := arr2[5] of rec1 {name="aname", address="somewhere", id=0, age=0}
+  var a3: arr3 := arr3[100] of ""
+  var r1 := rec1 {name="Kapoios", address="Kapou", id=2432, age=44}
+  var r2 := rec2 {name="Allos", dates=arr1[3] of 1900}
+in
+  (a1[0] := 1;
+   a1[9] := 3;
+   a2[3].name := "kati";
+   a2[1].age := 23;
+   a3[34] := "sfd";
+   r1.name := "sdf";
+   r2.dates[0] := 2323;
+   r2.dates[2] := 2323)
+end

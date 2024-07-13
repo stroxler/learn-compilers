@@ -1,0 +1,9 @@
+(library
+ (public_name fang)
+ (libraries fang.translate fang.x64 fmt)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect)))
+
+(documentation
+ (package fang))

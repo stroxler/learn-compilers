@@ -1,0 +1,5 @@
+let
+  function foo(): int = 10
+  and function foo(): int = 20
+in
+end

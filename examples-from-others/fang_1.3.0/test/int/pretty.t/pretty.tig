@@ -1,0 +1,49 @@
+let
+  type tree = {key: string, left: tree, right: tree}
+
+  function leaf(key: string): tree = tree { key=key, left=nil, right=nil }
+
+  function pretty(t: tree): string =
+    let
+      var output := ""
+
+      function write(s: string) = output := concat(output, s)
+
+      function show(n: int, t: tree) =
+        let
+          function indent(s: string) =
+            (for i := 1 to n do write(" ");
+             output := concat(output, s);
+             write("\n"))
+        in
+          if t = nil then indent(".")
+          else
+            (indent(t.key);
+             show(n + 1, t.left);
+             show(n + 1, t.right))
+        end
+    in
+      show(0, t);
+      output
+    end
+
+  var example :=
+    tree {
+      key="apple",
+      left=
+        tree {
+          key="banana",
+          left=nil,
+          right=
+            tree {
+              key="carrot",
+              left=leaf("durian"),
+              right=leaf("eggplant")
+            }
+        },
+      right=nil
+    }
+in
+  print(pretty(example));
+  print_line()
+end

@@ -1,0 +1,7 @@
+let
+  type rec = {name: string, id: int}
+  var r1 := rec {name="aname", id=0}
+in
+  r1.name := 3;
+  r1.id := ""
+end

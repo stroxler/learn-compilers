@@ -1,0 +1,5 @@
+let
+  type stuff = array of int
+in
+  (stuff[0] of 5) >= (stuff[3] of 10)
+end

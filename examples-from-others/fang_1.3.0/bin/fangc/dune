@@ -1,0 +1,4 @@
+(executable
+ (package fang)
+ (public_name fangc)
+ (libraries cmdliner fang fmt.cli fmt.tty logs logs.cli logs.fmt))

@@ -1,0 +1,6 @@
+(library
+ (name fang_monads)
+ (public_name fang.monads)
+ (inline_tests)
+ (preprocess
+  (pps ppx_inline_test)))

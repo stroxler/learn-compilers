@@ -1,0 +1,2 @@
+(seed(5);
+ for i := 1 to 100 do (print_int(random(1, 101)); print_line()))

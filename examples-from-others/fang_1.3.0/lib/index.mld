@@ -1,0 +1,88 @@
+{0 Fang - A compiler for Tiger}
+
+This is version %%VERSION%%, which is released under the terms of the GPL-3.0 license.
+
+Fang is copyright 2021 by Jesse Haber-Kucharsky.
+
+{1 Summary}
+
+Fang is a self-contained compiler for Tiger (a Pascal-like language with some additional features) which targets x86-64.
+
+{[
+let program = {| for i := 1 to 10 do (print_int(i); print_line()) |} in
+let lexbuf = Lexing.from_string program in
+(* Assume no compilation errors! *)
+let pp = Fang.compile_to_asm lexbuf |> Result.get_ok in
+Fmt.pr "%a@." pp ()
+]}
+
+{v
+    .intel_syntax noprefix
+    .global fang
+
+fang:
+    push r12
+    push rbx
+    mov rbx, 1
+    mov r12, 10
+    cmp rbx, r12
+    jg .L2
+.L0:
+    mov rdi, rbx
+    call fang_io_print_int
+    call fang_io_print_line
+    cmp rbx, r12
+    jge .L2
+    inc rbx
+    jmp .L0
+.L2:
+    mov rax, 0
+    pop rbx
+    pop r12
+    ret
+v}
+
+You may wish to consult {{:https://haber-kucharsky.com/proj/fang}Fang's homepage} for more discussion of the project's goals, scope, and implementation.
+
+The Tiger language and the Fang compilation process are from Appel's book \[1\].
+
+{1 Libraries}
+
+Fang's implementation is divided among several libraries, but in most cases only the top-level library will be of interest.
+
+{3 High-level libraries}
+
+- {!Fang} - Start here! High-level functionality for compiling Tiger into assembly code
+- {!Fang_x64} - All Fang functionality specialized to the x86-64 architecture
+
+{3 The Tiger language}
+
+- {!Fang_tiger} - All things Tiger: parsing, type-checking, static analysis, and pretty-printing
+
+{3 The intermediate representation (IR)}
+
+- {!Fang_ir} - The IR language definition, pretty-printing, rewriting, and in-memory storage
+
+{3 Translation from Tiger to IR}
+
+- {!Fang_translate} - Platform-agnostic translation from Tiger to IR
+- {!Fang_frame} - Architecture abstraction layer for translation
+
+{3 Flow graphs and register allocation}
+
+- {!Fang_flow} - Create arbitrary flow graphs and perform analysis on them
+- {!Fang_alloc} - Register allocation (assigning processor registers to boxes)
+
+{3 Support libraries}
+
+- {!Fang_asm} - Assembly instructions, including printing and inspection
+- {!Fang_vm} - Abstractions for program labels and temporary storage locations ("boxes")
+- {!Fang_iter} - Fast iterators for data structures
+- {!Fang_monads} - Monads that we know and love
+- {!Fang_cmake} - Tools for interacting with CMake (used by [fangu])
+
+{1 References}
+
+Other Fang libraries note references where they're applicable.
+
+\[1\] A. Appel, {i Modern compiler implementation in ML}, 2nd ed. Cambridge: Cambridge University Press, 1999.

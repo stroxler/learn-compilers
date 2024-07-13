@@ -1,0 +1,18 @@
+(library
+ (name fang_tiger)
+ (public_name fang.tiger)
+ (libraries fang.iter fang.monads fmt)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect)))
+
+(ocamllex lexer)
+
+(menhir
+ (modules tokens)
+ (flags --only-tokens))
+
+(menhir
+ (modules tokens grammar)
+ (merge_into grammar)
+ (flags --explain --external-tokens Tokens))

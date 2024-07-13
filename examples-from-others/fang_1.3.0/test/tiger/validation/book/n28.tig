@@ -1,0 +1,7 @@
+let
+  type rec1 = {name: string, id: int}
+  type rec2 = {name: string, id: int}
+  var r1: rec1 := rec2 {name="Name", id=0}
+in
+  r1
+end

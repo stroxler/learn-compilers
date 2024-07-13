@@ -1,0 +1,30 @@
+(data_only_dirs c)
+
+(rule
+ (deps
+  (source_tree c))
+ (targets libfang_runtime.a)
+ (action
+  (progn
+   (run cmake -DCMAKE_BUILD_TYPE=Debug c)
+   (run make))))
+
+(alias
+ (name rt)
+ (deps libfang_runtime.a))
+
+(install
+ (section share)
+ (files
+  (c/include/fang_rt/alloc.h as rt/include/fang_rt/alloc.h)
+  (c/include/fang_rt/error.h as rt/include/fang_rt/error.h)
+  (c/include/fang_rt/io.h as rt/include/fang_rt/io.h)
+  (c/include/fang_rt/string.h as rt/include/fang_rt/string.h)
+  (c/include/fang_rt/types.h as rt/include/fang_rt/types.h)
+  (c/src/alloc.c as rt/src/alloc.c)
+  (c/src/error.c as rt/src/error.c)
+  (c/src/io.c as rt/src/io.c)
+  (c/src/main.c as rt/src/main.c)
+  (c/src/string.c as rt/src/string.c)
+  (c/src/types.c as rt/src/types.c)
+  (c/CMakeLists.txt as rt/CMakeLists.txt)))

@@ -1,0 +1,6 @@
+(library
+ (name test_alloc)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect))
+ (libraries fang.x64))

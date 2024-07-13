@@ -1,0 +1,593 @@
+#+TITLE: Fang: A compiler for Tiger
+#+SUBTITLE: Version %%VERSION%%
+#+AUTHOR: Jesse Haber-Kucharsky
+
+* Summary
+  Fang is a self-contained compiler for Tiger, a Pascal-like language, which targets the x86-64 architecture. It's the first product of my self-study in compilers.
+
+  Tiger is a small language, because it's only large enough to explore some applicable concepts in compiler development.
+
+  The Tiger language and the process of compiling it to assembly are defined in [[https://www.cs.princeton.edu/~appel/modern/ml/][Andrew Appel's book]]. The book uses SML, but Fang is written in OCaml. I've also diverged significantly from Appel's implementation by adopting some interesting techniques I learned about from other sources.
+
+  There are instructions for [[file+sys:development.org][developing Fang]] and also an [[file+sys:tiger.org][overview of the Tiger language]].
+
+** Project scope and goals
+
+   The field of compilers is enormous, so it's important to clearly define the scope of the project.
+
+   Appel's book is divided into two parts. The first guides the reader through the major parts of the compiler from start-to-finish. The second part discusses "advanced" techniques such as garbage collection, implementing functional programming languages, and optimizing for the memory hierarchy.
+
+   Fang focuses on the first part. In general, the goal is to do less but do it /well/. More specifically, I'd like Fang to:
+
+   - Generate correct assembly for all valid Tiger programs
+   - Be easy to use (eg., by showing clear and descriptive errors) and hard to misuse
+   - Offer insight into the stages of compilation
+   - Be structured, tested, and documented such that it can be modified with confidence
+
+   Some *non-goals* of Fang are to:
+   - Produce the fastest or cleanest possible assembly
+   - To explore advanced techniques in compiler design (I'd rather do so with a more interesting language than Tiger)
+   - To support a full-fledged programming language
+
+* License
+  Fang is licensed under the terms of version 3 of the [[https://www.gnu.org/licenses/gpl-3.0.html][GNU General Public License]].
+
+* Resources and contact
+  These resources correspond to the latest-released version of Fang.
+
+  - [[https://s3.ca-central-1.amazonaws.com/public.s3.jhaberku.net/fang_%%VERSION%%.tar.gz][Source code archive]]
+  - [[http://hakuch.github.io/fang/fang/index.html][API documentation for the underlying OCaml library]]
+
+  Please don't hesitate to [[mailto:jesse@haber-kucharsky.com][contact me]] with any questions, issues, or suggestions.
+
+* Installation
+  The easiest way to build and install Fang from its source archive is to use the OCaml package manager, [[https://opam.ocaml.org/][opam]]. Doing so will also install Fang's dependencies.
+
+  Fang also depends on CMake, which must be externally installed.
+
+  Assuming the current working directory is the location where Fang's source have been unpacked, execute
+  #+BEGIN_SRC
+$ opam install .
+  #+END_SRC
+
+* Usage
+  Fang comes with two executables: ~fangc~ ("fang compiler") and ~fangu~ ("fang unite").
+
+** ~fangc~
+
+   ~fangc~ reads a Tiger program from the standard input device and, by default, writes x86 assembly directly to the standard output device.
+
+   For example,
+   #+BEGIN_SRC
+$ echo 'let var x := 10 in x + 1 end' | fangc
+    .intel_syntax noprefix
+    .global fang
+
+fang:
+    mov rax, 10
+    add rax, 1
+    ret
+   #+END_SRC
+
+   (I encourage readers to try this on a terminal that supports colors, because ~fangc~ writes pretty coloured output!)
+
+   One goal of ~fangc~ is to make it easy to observe different stages of the compilation process. The ~--emit=FORMAT~ (or ~-e FORMAT~ for short) option writes output in an intermediate format instead of continuing to compile to assembly.
+
+   | Format           | Details                                                     |
+   |------------------+-------------------------------------------------------------|
+   | ~tiger~          | Pretty-printed Tiger, with comments removed.                |
+   | ~ir~             | The "ugly" intermediate representation (IR).                |
+   | ~canonical-ir~   | The IR after it has been transformed to the canonical form. |
+   | ~flow~           | The flow-graph, without strings.                            |
+   | ~allocated-flow~ | The flow-graph after registers have been allocated.         |
+   | ~asm~            | Assembly.                                                   |
+
+   Any unambiguous prefix of the format name can be used.
+
+   For example,
+   #+BEGIN_SRC
+$ echo 'let var x := 10 in x + 1 end' | fangc -e can
+(frame fang no-fp (perform (move #16 10) (+ #16 1)))
+   #+END_SRC
+
+   By default, all compiled Tiger programs are /safe/. That is, unless Fang can statically infer that it's unnecessary, all accesses to record variables are checked for ~nil~ and all array indices are bounds-checked. If you'd like to live dangerously, you can eliminate these checks with the ~--unsafe~ (or ~-u~) option. The resulting assembly is cleaner and programs may run marginally faster.
+
+** ~fangu~
+
+   Compiling a Tiger program is only the first step. Fang also includes a run-time library for functionality like memory allocation. Since the details of compiling this library and linking it with the assembly emitted by ~fangc~ can vary greatly from system to system, Fang delegates this to [[https://cmake.org/][CMake]] with a tool called ~fangu~.
+
+   ~fangu~ automates the creation of a CMake project which compiles both the run-time library from its source and the Tiger program. The advantage of this approach is that both the assembly file and the run-time library can be compiled with arbitrary compiler and linker options.
+
+   Unlike ~fangc~, ~fangu~ reads from a named file:
+   #+BEGIN_SRC
+$ echo 'let var x := 10 in print_int(x + 1); print_line() end' > foo.tig
+$ fangu foo.tig
+$ _fangbuild/foo
+11
+   #+END_SRC
+
+   ~fangu~ can also execute the resulting program directly:
+   #+BEGIN_SRC
+$ fangu foo.tig -x
+11
+   #+END_SRC
+
+   For example, this invocation of ~fangu~ compiles Tiger in unsafe-mode and adds debugging symbols to the run-time library:
+   #+BEGIN_SRC
+$ fangu --tiger-compile-options=-u --c-compile-options=-g3 foo.tig -x
+11
+   #+END_SRC
+
+* Overview of the compilation process
+  This is a high-level overview of the steps of going from Tiger to x86 assembly.
+
+  This is a Tiger program:
+  #+BEGIN_SRC
+let
+  function multiply(a: int, b: int): int =
+    let
+      var d := 0
+      var e := a
+    in
+      while 1 do
+        (d := d + b;
+         e := e - 1;
+         if e <= 0 then break);
+      d
+    end
+in
+  print_int(multiply(3, 12));
+  print_line()
+end
+  #+END_SRC
+
+  The first step is to parse the textual representation of the program.
+
+  The program is then analyzed to ensure that all types are correct and to gather information which permits some optimizations.
+
+  Next, the program is /translated/ into the intermediate representation (IR). Translation depends on architecture-specific details about how to implement stack frames. The IR produced through translation is "ugly", but straightforward to generate.
+
+  Here's the IR for the Tiger program above:
+  #+BEGIN_SRC
+(frame fang (fp 0)
+  (perform
+    (discard
+      (perform
+        (discard 0)
+        (perform
+          (discard
+            (perform
+              (discard
+                (call fang_io_print_int (call fang.multiply rbp 3 12)))
+              (perform (discard (call fang_io_print_line)) 0)))
+          0)))
+    0))
+(frame fang.multiply no-fp
+  (perform
+    (move #18 rdx)
+    (move #17 rsi)
+    (move #16 rdi)
+    (perform
+      (move #19 0)
+      (move #20 #17)
+      (perform
+        (def .L0)
+        (cjump NE 1 0 .L1 .L2)
+        (def .L1)
+        (discard
+          (perform
+            (discard
+              (perform
+                (move #19 (+ #19 #18))
+                (move #20 (- #20 1))
+                (perform
+                  (cjump LE #20 0 .L3 .L4)
+                  (def .L3)
+                  (discard (perform (jump .L2) 0))
+                  (def .L4)
+                  0)))
+            0))
+        (jump .L0)
+        (def .L2)
+        #19))))
+  #+END_SRC
+
+  Next, the IR is rewritten into /canonical/ form such that the same thing is computed but the structure of the program is more "regular". During the next phase, pattern-matching on the structure of the IR allows us to convert it to assembly instructions. By reducing the amount of different ways the same thing can be expressed, it's easier to recognize patterns and generate better assembly.
+
+  Here's the "canonical" version of the same IR:
+  #+BEGIN_SRC
+(frame fang (fp 0)
+  (perform
+    (move #21 (call fang.multiply rbp 3 12))
+    (move #22 (call fang_io_print_int #21))
+    (discard #22)
+    (move #23 (call fang_io_print_line))
+    (discard #23)
+    0))
+(frame fang.multiply no-fp
+  (perform
+    (move #18 rdx)
+    (move #17 rsi)
+    (move #16 rdi)
+    (move #19 0)
+    (move #20 #17)
+    (def .L0)
+    (jump .L1)
+    (def .L1)
+    (move #19 (+ #19 #18))
+    (move #20 (- #20 1))
+    (cjump LE #20 0 .L3 .L4)
+    (def .L3)
+    (jump .L2)
+    (def .L4)
+    (jump .L0)
+    (def .L2)
+    #19))
+  #+END_SRC
+
+  Now, the IR is compared against known patterns (as described earlier) and converted to assembly instructions. These instructions are nodes in a directed graph. Two nodes are connected if execution "flows" from one node to the other. A flow-graph! The nodes in the graph are automatically organized into "basic-blocks".
+
+  This is the flow-graph for our canonical IR:
+  #+BEGIN_SRC
+(frame
+  (block
+    (entry fang)
+    (asm "mov rdi, rbp")
+    (asm "mov rsi, 3")
+    (asm "mov rdx, 12")
+    (asm "call fang.multiply")
+    (asm "mov #21, rax")
+    (asm "mov rdi, #21")
+    (asm "call fang_io_print_int")
+    (asm "mov #22, rax")
+    (asm "call fang_io_print_line")
+    (asm "mov #23, rax")
+    (asm "mov #25, 0")
+    (asm "mov #24, #25")
+    (asm "mov rax, #24")
+    (exit)))
+(frame
+  (block
+    (entry fang.multiply)
+    (asm "mov #18, rdx")
+    (asm "mov #17, rsi")
+    (asm "mov #16, rdi")
+    (asm "mov #19, 0")
+    (asm "mov #20, #17")
+    (branch "jmp .L0"))
+  (block (label .L0)
+         (branch "jmp .L1"))
+  (block
+    (label .L1)
+    (asm "mov #27, #19")
+    (asm "add #27, #18")
+    (asm "mov #19, #27")
+    (asm "dec #20")
+    (asm "cmp #20, 0")
+    (cbranch "jle .L3" "jg .L4"))
+  (block (label .L2)
+         (asm "mov #26, #19")
+         (asm "mov rax, #26")
+         (exit))
+  (block (label .L3)
+         (branch "jmp .L2"))
+  (block (label .L4)
+         (branch "jmp .L0")))
+  #+END_SRC
+
+  Now, we must assign each of the temporary storage locations (for example, ~#27~) to processor registers. This is called /register allocation/. Tiger's register allocator uses a graph-colouring algorithm. After assigning registers, some redundant ~mov~ instructions can be eliminated.
+
+  This is the flow-graph after registers have been assigned:
+  #+BEGIN_SRC
+(frame
+  (block
+    (entry fang)
+    (asm "mov rdi, rbp")
+    (asm "mov rsi, 3")
+    (asm "mov rdx, 12")
+    (asm "call fang.multiply")
+    (asm "mov rdi, rax")
+    (asm "call fang_io_print_int")
+    (asm "call fang_io_print_line")
+    (asm "mov rax, 0")
+    (exit)))
+(frame
+  (block (entry fang.multiply)
+         (asm "mov rax, 0")
+         (branch "jmp .L0"))
+  (block (label .L0)
+         (branch "jmp .L1"))
+  (block
+    (label .L1)
+    (asm "add rax, rdx")
+    (asm "dec rsi")
+    (asm "cmp rsi, 0")
+    (cbranch "jle .L3" "jg .L4"))
+  (block (label .L2)
+         (exit))
+  (block (label .L3)
+         (branch "jmp .L2"))
+  (block (label .L4)
+         (branch "jmp .L0")))
+  #+END_SRC
+
+  Finally, the flow-graph is converted to x86 assembly. In the process of doing so, basic-blocks are arranged in the correct order and unreachable blocks are eliminated.
+
+  Here's the final assembly:
+  #+BEGIN_SRC
+    .intel_syntax noprefix
+    .global fang
+
+fang:
+    push rbp
+    mov rbp, rsp
+    mov rdi, rbp
+    mov rsi, 3
+    mov rdx, 12
+    call fang.multiply
+    mov rdi, rax
+    call fang_io_print_int
+    call fang_io_print_line
+    mov rax, 0
+    leave
+    ret
+
+fang.multiply:
+    mov rax, 0
+.L1:
+    add rax, rdx
+    dec rsi
+    cmp rsi, 0
+    jg .L1
+    ret
+  #+END_SRC
+
+  In order to produce an executable program, this assembly file is compiled into an object file by an assembler and then linked against Fang's run-time library (which defines functions like ~fang_io_print_int~).
+
+* Design highlights
+  I discovered some interesting techniques and tools while writing Fang. The following sections highlight them briefly.
+
+** Tagless-final
+   I first learned of the "tagless-final" style from [[https://discuss.ocaml.org/t/narrowing-variant-types-alternatives/3806/5][this wonderful post]] on the OCaml discussion forum. Oleg Kiselyov writes about it in much depth on his [[http://okmij.org/ftp/tagless-final/][website]].
+
+   Intrigued, I structured the representation of both Tiger and the IR this way. I wanted to explore the impact of doing so on the rest of the implementation of the compiler, though I didn't know what to expect. If I've understood correctly, the result is interesting.
+
+   Instead of defining an abstract syntax tree for Tiger, Fang defines the "algebra" of the Tiger language as a module signature. A module which implements this signature is said to be an "interpreter" of this algebra.
+
+   For example, given the module ~Fang_Tiger.Pretty~ which implements the module signature ~TIGER~, executing
+   #+BEGIN_SRC
+let expr = Fang_tiger.Pretty.(scope [var "x" (int 10L)] (value (name "x")))
+   #+END_SRC
+   means that the value ~expr~ is a pretty-printer for precisely the Tiger expression that we constructed.
+
+   (Note, real code would need to include source locations for each of those elements.)
+
+   We can format to ~stdout~:
+   #+BEGIN_SRC
+Fmt.pr "%a@." Fang_tiger.Pretty.pp expr
+   #+END_SRC
+
+   producing the output ~"let var x := 10 in x end"~.
+
+   The important observation here is that there is no in-memory representation of the entire Tiger expression: just whatever state is necessary to implement a pretty-printer for it.
+
+   A common pattern in Fang is to define an interpreter that "forwards" its result to another interpreter. For example, the functor ~Validation (L : TIGER)~ is an interpreter which validates a Tiger expression "into" the interpreter ~L~ in addition to producing a "validator".
+
+   In this way, we can compose a pipeline of compiler stages however we wish.
+
+   Let's work backwards. (These functors are close approximations to real ones in Fang's implementation.)
+
+   The last step is to pretty-print the IR:
+   #+BEGIN_SRC ocaml
+module M0 = Fang_ir.Pretty
+   #+END_SRC
+
+   Before that, we want to canonicalize it:
+   #+BEGIN_SRC ocaml
+module M1 = Fang_ir.Canonical (M0)
+   #+END_SRC
+
+   Before that, we want to translate it from Tiger:
+   #+BEGIN_SRC ocaml
+module M2 = Translate (M1)
+   #+END_SRC
+
+   Before that, we want to statically analyze the Tiger expression:
+   #+BEGIN_SRC ocaml
+module M3 = Analyze (M2)
+   #+END_SRC
+
+   Before that, we want to validate that the Tiger expression type-checks:
+   #+BEGIN_SRC ocaml
+module M4 = Validation (M3)
+   #+END_SRC
+
+   Before that, we want to parse Tiger from text:
+   #+BEGIN_SRC ocaml
+module M5 = Parsing (M4)
+   #+END_SRC
+
+   The OCaml values that we get from ~M5.parse~ encode the entire process of pretty-printing canonical IR from Tiger source code, and /without/ materializing an in-memory AST of either the Tiger or IR program.
+
+   This has many parallels to structuring code in [[https://en.wikipedia.org/wiki/Continuation-passing_style][continuation-passing style (CPS)]].
+
+** Parsing with Menhir
+   Tiger is parsed via the [[http://gallium.inria.fr/~fpottier/menhir/][Menhir]] parser-generator.
+
+   Menhir supports generating a functor instead of just a module, which is what makes it possible to integrate parsing into the compiler pipeline without building an in-memory AST. Neat!
+
+   The advantage of using a parser-generator is knowing that the grammar is well-formed and that every case has been accounted for.
+
+   Alternatives, like a recursive-descent parser (either hand-made or constructed via combinators), would result in better error messages at the expense of confidence in the grammar.
+
+   Menhir supports [[http://gallium.inria.fr/~fpottier/menhir/manual.html#sec67][tools]] for producing good error messages, but that's (possibly) work for a future version of Fang.
+
+** Static analysis for optimization
+   Fang performs some rudimentary static analysis on Tiger programs. This permits some interesting optimizations to be applied.
+
+*** Escaping
+   /Escaping/ analysis tracks whether any variable or functional parameter ever "escapes" its scope by being referenced in a nested function.
+
+   For example,
+   #+BEGIN_SRC
+let
+  var x := 10
+  var y := 20
+  function foo(): int = x
+in
+  foo() + y
+end
+   #+END_SRC
+
+   Here, ~x~ escapes but ~y~ doesn't.
+
+   When translating Tiger to IR, a local variable that doesn't escape can be stored in a register instead of on the function's stack. This is because of the way nested functions are implemented (with a technique called a "static link").
+
+*** Mutability
+
+    A variable or function parameter is /mutated/ when it's assigned to after its initial definition.
+
+    For example,
+    #+BEGIN_SRC
+ let
+   var x := 10
+   var y := x + 1
+ in
+   y := 2 * y
+ end
+    #+END_SRC
+    Here, ~x~ is constant (ie., not mutated) and ~y~ is mutated.
+
+    Fang uses this information to infer "facts" about variables:
+    - For record values, whether they are ~nil~ or non-~nil~
+    - For integers, their constant value
+    - For array values, the number of items they contain
+
+    These facts can be used to elide run-time checks on array bounds and ~nil~-access when Fang can show it's safe to do so.
+
+    Here are two examples.
+
+    In the first, Fang knows the size of the array at compile-time, so branching happens unconditionally:
+      #+BEGIN_SRC
+ let
+   type numbers = array of int
+   var xs := numbers of [1, 2, 3]
+ in
+   while size xs < 5 do print("AAA\n")
+ end
+      #+END_SRC
+      #+BEGIN_SRC
+     .intel_syntax noprefix
+     .global fang
+
+ fang:
+     mov rdi, 3
+     mov rsi, 0
+     call fang_alloc_array
+     mov QWORD PTR [rax + 8], 1
+     mov QWORD PTR [rax + 16], 2
+     mov QWORD PTR [rax + 24], 3
+ .L0:
+     lea rdi, str0
+     call fang_io_print
+     jmp .L0
+
+ str0:
+     .dc.a 4
+     .string "AAA\n"
+      #+END_SRC
+
+   In this example, the run-time checks for accessing an array and record variables are omitted since Fang knows it's safe:
+   #+BEGIN_SRC
+let
+  type numbers = array of int
+  type person = {name: string, age: int}
+  var xs := numbers[10] of 0
+  var p := person {name="Joe", age=66}
+in
+  xs[3] := 100;
+  print(p.name)
+end
+   #+END_SRC
+   #+BEGIN_SRC
+    .intel_syntax noprefix
+    .global fang
+
+fang:
+    push rbx
+    mov rdi, 10
+    mov rsi, 0
+    call fang_alloc_array
+    mov rbx, rax
+    mov rdi, 2
+    call fang_alloc_record
+    mov rcx, 66
+    mov QWORD PTR [rax], rcx
+    lea rcx, str0
+    mov QWORD PTR [rax + 8], rcx
+    mov QWORD PTR [rbx + 32], 100
+    mov rdi, QWORD PTR [rax + 8]
+    call fang_io_print
+    mov rax, 0
+    pop rbx
+    ret
+
+str0:
+    .dc.a 3
+    .string "Joe"
+   #+END_SRC
+
+*** Leaves
+    A Tiger function is called a /leaf/ when it doesn't call any other user-defined Tiger programs.
+
+    This is useful information because it means that Fang can omit code which saves a frame's static link to its stack. For many Tiger functions, this means that no stack frame is necessary at all.
+
+** Rewriting IR
+   Instead of the IR-rewriting code Appel demonstrates in his book, I adopted the [[http://okmij.org/ftp/tagless-final/course2/index.html][framework for optimizing DSLs in the tagless-style]] by Kiselyov.
+
+   The main advantages are that the optimizations are type-preserving (that is, I can be sure that all rewritten IR type-checks) and that it fits into the compiler "pipeline" as described earlier.
+
+** Functional flow-graphs
+   For simplicity, Appel uses lists to represent flow-graphs, but I found the code for manipulating graphs to be error-prone.
+
+   A [[https://www.cs.tufts.edu/~nr/pubs/zipcfg-abstract.html][paper]] by Ramsey and Dias describes an encoding of flow-graphs using a neat technique for navigating immutable data structures called "zippers". Their encoding ensures that invariants about the structure of the graph are maintained automatically, even as the graph is constructed piece-by-piece.
+
+   The authors also show how backwards and forwards analysis on such graphs can be written generically.
+
+   Fang adopts the implementation described in the paper, including an implementation of the generic analysis framework: it's specialized to calculate liveness information.
+
+** Register allocation
+   There are two complications to register allocation.
+
+   The first is how to deal with "spills": a situation in which no processor registers are available to assign to a temporary storage location.
+
+   The second is the problem of redundant move-instructions. For example, if a flow-graph consists of these instructions
+   #+BEGIN_SRC
+mov #1, 10
+mov #2, #1
+   #+END_SRC
+   then it may be possible to /coalesce/ ~#1~ and ~#2~ so that the move from ~#1~ to ~#2~ is unnecessary and can be eliminated.
+
+   In his book, Appel summarizes [[https://dl.acm.org/doi/10.1145/229542.229546][a previously-published paper]] on a register-allocation algorithm called "iterated register coalescing".
+
+   The more simple version of the algorithm neither handles spills nor coalescing: they're marked as "advanced" exercises in the text. Fang's implementation handles both, which means most redundant move-instructions are eliminated in the assembly it emits and there is no limit on the number of local variables in a Tiger program.
+
+   Register allocators for compilers targeting x86-64 can be complex because its registers are /segmented/: ~rax~ is the 64 bit register and ~eax~ is the 32 bit one, for example. This is not an issue in Fang because all values are 64 bit.
+
+** Run-time
+   For simplicity, Fang does not implement a garbage collector (GC).
+
+   Instead, a large buffer is allocated (32 MiB as of this writing) the first time a request to allocate memory is made.
+
+   A request for ~N~ B of memory advances a pointer into the buffer by ~N~, so allocation is fast.
+
+   Of course, the program aborts once memory is exhausted. No attempt is made to reclaim memory.
+
+** Approaches to testing
+   There are many components in Fang that interact in complex ways. Fang's tests are most useful because they make the impact of changes very clear: that is, they permit Fang to be modified with confidence.
+
+   In addition to the usual unit and integration tests, two notable kinds of tests in Fang are:
+   - /End-to-end/: In these tests, a Tiger program is compiled and executed. Both the assembly produced and the result of executing the program are saved for reference. When something changes, it's compared against the reference versions with the ~diff~ utility.
+   - /Distribution/: These tests validate processes related to Fang's distribution: that a package can be built, that installed versions of executables can produce output, etc.
+
+   Fang makes use of tools that make [[https://blog.janestreet.com/testing-with-expectations/]["expectation tests"]] easy to write.

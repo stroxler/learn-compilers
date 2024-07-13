@@ -1,0 +1,22 @@
+(lang dune 2.8)
+(name fang)
+(cram enable)
+(using menhir 2.1)
+(generate_opam_files true)
+
+(package
+ (name fang)
+ (authors "Jesse Haber-Kucharsky")
+ (maintainers "Jesse Haber-Kucharsky")
+ (synopsis "A self-contained compiler for Tiger (a Pascal-like language) targeting x86-64")
+ (license GPL-3.0-only)
+ (depends
+   bos
+   cmdliner
+   conf-cmake
+   fmt
+   logs
+   menhir
+   (ocaml (>= 4.08))
+   ppx_expect
+   ppx_inline_test))

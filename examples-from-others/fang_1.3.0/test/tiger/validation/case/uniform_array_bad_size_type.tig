@@ -1,0 +1,6 @@
+let
+  type numbers = array of int
+in
+  numbers["abc"] of 20
+end
+

@@ -1,0 +1,19 @@
+let
+  type numbers = array of int
+
+  function sum(xs: numbers): int =
+    let
+      var total := 0
+    in
+      for i := 0 to size xs - 1 do total := total + xs[i];
+      total
+    end
+
+  var xs := numbers[3] of 0
+in
+  xs[0] := 10;
+  xs[1] := 20;
+  xs[2] := 30;
+  print_int(sum(xs));
+  print_line()
+end

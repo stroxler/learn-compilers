@@ -1,0 +1,3 @@
+(executable
+ (name prettify)
+ (libraries lambdasoup re))

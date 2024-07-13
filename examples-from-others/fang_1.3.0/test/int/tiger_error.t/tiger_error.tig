@@ -1,0 +1,8 @@
+let
+  function safe_div(n: int, d: int): int =
+    (if d = 0 then error("division by zero");
+     n / d)
+in
+  print_int(safe_div(10, 0));
+  print_line()
+end

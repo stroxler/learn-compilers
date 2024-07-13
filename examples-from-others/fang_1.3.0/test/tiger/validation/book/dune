@@ -1,0 +1,17 @@
+(rule
+ (target snippets.ml)
+ (action
+  (with-stdout-to
+   snippets.ml
+   (run %{ocaml} %{workspace_root}/test/collect_snippets.ml)))
+ (alias collect-snippets)
+ (deps
+  (glob_files *.tig)
+  (file %{workspace_root}/test/collect_snippets.ml)))
+
+(library
+ (name test_tiger_validation_book)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect))
+ (libraries test_tiger_validation_support))

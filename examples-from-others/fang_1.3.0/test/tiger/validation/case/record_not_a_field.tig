@@ -1,0 +1,5 @@
+let
+  type person = {name: string, age: int}
+in
+  person {nickname="Joe", age=66}
+end

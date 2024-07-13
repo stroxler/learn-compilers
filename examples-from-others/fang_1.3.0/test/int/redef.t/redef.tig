@@ -1,0 +1,11 @@
+let
+  function value(): int = 10
+  var x := value()
+  function value(): int = 20
+  var y := value()
+  function value(): int = 30
+  var z := value()
+in
+  print_int(x + y + z);
+  print_line()
+end

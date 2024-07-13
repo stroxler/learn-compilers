@@ -1,0 +1,8 @@
+let
+  type person = {name: string, age: int}
+  var p: person := nil
+  var q := p
+in
+  // Statically known to be [nil].
+  print(q.name)
+end

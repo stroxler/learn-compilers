@@ -1,0 +1,6 @@
+let
+  function f1(a: int, b: string): int = (f2(a + 1); 0)
+  and function f2(d: int): string = (f1(d, "str"); " ")
+in
+  f1(0, "str2")
+end

@@ -1,0 +1,3 @@
+(library
+ (name test_tiger_validation_support)
+ (libraries test_support))

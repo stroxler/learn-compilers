@@ -1,0 +1,4 @@
+(library
+ (name fang_translate)
+ (public_name fang.translate)
+ (libraries fang.frame fang.iter fang.tiger))

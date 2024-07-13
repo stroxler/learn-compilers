@@ -1,0 +1,5 @@
+let
+  type thing = {value: int}
+in
+  thing {value=10} >= thing {value=20}
+end

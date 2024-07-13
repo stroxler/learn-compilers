@@ -1,0 +1,5 @@
+let
+  var x := 10
+in
+  3 + size x
+end

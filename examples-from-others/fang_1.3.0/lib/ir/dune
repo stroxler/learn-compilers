@@ -1,0 +1,7 @@
+(library
+ (name fang_ir)
+ (public_name fang.ir)
+ (libraries fang.vm)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect)))

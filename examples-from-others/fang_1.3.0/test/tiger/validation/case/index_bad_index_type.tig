@@ -1,0 +1,6 @@
+let
+  type numbers = array of int
+  var xs := numbers of [1, 2, 3]
+in
+  xs["abc"]
+end

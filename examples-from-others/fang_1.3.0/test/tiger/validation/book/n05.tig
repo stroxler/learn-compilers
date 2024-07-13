@@ -1,0 +1,10 @@
+let
+  type int_list = {head: int, tail: int_list}
+  
+  type tree = {key: int, children: tree_list}
+  and type tree_list = {head: tree, tail: tree_list}
+  
+  var l: int_list := int_list {head=0, tail=nil}
+in
+  l
+end

@@ -1,0 +1,5 @@
+let
+  var x := 20
+in
+  x.age
+end

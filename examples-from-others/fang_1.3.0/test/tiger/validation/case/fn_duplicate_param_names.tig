@@ -1,0 +1,4 @@
+let
+  function add(x: int, x: int): int = x + y
+in
+end

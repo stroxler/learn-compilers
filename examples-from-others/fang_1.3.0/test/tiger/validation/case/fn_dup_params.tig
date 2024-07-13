@@ -1,0 +1,5 @@
+let
+  function add(x: int, x: int): int = x + x
+in
+  add(2, 3)
+end

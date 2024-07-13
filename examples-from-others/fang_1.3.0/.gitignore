@@ -1,0 +1,6 @@
+.envrc
+.direnv/
+_build
+_fangbuild/
+.merlin
+*.html
