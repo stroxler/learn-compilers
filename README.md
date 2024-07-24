@@ -86,3 +86,17 @@ Integrating stock VSCode with nix-shell:
 A couple of more specific tools that might also be handy:
 - https://www.tweag.io/blog/2023-02-16-opam-nix/ (Tweag usually has good stuff)
 - https://github.com/rizo/onix
+
+
+# Some resources to look at for ocaml + compilers
+
+Colin James has several projects, including an IMP compiler
+to llvm and some lambda calculus stuff.
+
+Tiger compilers:
+- fang is a really well written project
+- the llvm compiler looks really cool
+
+Norah Sandler's book is coming out soon, it has a C compiler.
+
+The Bolt compiler looks fantastic.
