@@ -100,3 +100,15 @@ Tiger compilers:
 Norah Sandler's book is coming out soon, it has a C compiler.
 
 The Bolt compiler looks fantastic.
+
+In terms of practically useful skills, ramping up to basic
+llvm is almost certainly the #1 valuable skill. But I recently
+saw a job posting asking for forklift experience, and I actually
+think from a skim of the docs that forklift could be a much better
+framework to dive deep on from a learning perspective, because it
+is production-grade but *vastly* simpler than llvm so it should be
+possible to learn it pretty well in a year or two, whereas llvm is
+beyond the scale where anyone could understand it ground-up in
+a lifetime.
+
+
