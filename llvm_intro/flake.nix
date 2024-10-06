@@ -1,5 +1,5 @@
 {
-  description = "Compiler and tools for the Tiger language.";
+  description = "Colin Jame's demo tiny LLVM compiler";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs";
@@ -16,42 +16,42 @@
       ocamlPackages = pkgs.ocamlPackages;
       buildInputs =
         [
-          pkgs.gcc
+          pkgs.llvm
         ]
         ++ (with ocamlPackages; [
-          llvm_14
+          ocaml
           bos
           fmt
-          ocaml-lsp
+          llvm
         ]);
     in {
-      devShell.${system} = pkgs.mkShell {
+      devShell = pkgs.mkShell {
         buildInputs =
           buildInputs
           ++ [
             # For clang-format.
-            pkgs.clang_14
+            pkgs.clang
             pkgs.ocamlformat
           ]
           ++ (with ocamlPackages; [
-            dune_2
+            dune_3
             findlib
-            ocaml
+            ocaml-lsp
             re
             utop
           ]);
       };
 
-      packages.${system} = {
+      packages = {
         fang = ocamlPackages.buildDunePackage {
           useDune2 = true;
-          pname = "cjames_llvm_intro";
+          pname = "llvm_intro";
           src = self;
           inherit buildInputs;
           dontUseCmakeConfigure = true;
           doCheck = true;
         };
       };
-      defaultPackage.${system} = self.packages.${system}.fang;
+      defaultPackage = self.packages.${system}.fang;
     });
 }

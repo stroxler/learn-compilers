@@ -5,7 +5,7 @@ maintainer: ["steven.troxler at gmail dot com"]
 authors: ["steven.troxler at gmail dot com"]
 depends: [
   "dune" {>= "3.0"}
-  "llvm" { = "14.0.6"}
+  "llvm" {":" = "14.0.6"}
   "odoc" {with-doc}
 ]
 build: [

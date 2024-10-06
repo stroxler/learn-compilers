@@ -38,9 +38,18 @@ module Compiler = struct
          op_to_llvm op left right "" builder
       | Call (name, arguments) ->
          let arguments = List.map (compile_expression environment) arguments in
+         (* This is kind of horrible, it's duplicated with compiling the define.
+            Worse, there is no type safety: if you mess the type up here, you get
+            a segfault... I thought it was the return type at first and ran into this. *)
+         let define_type =
+            let return_type = i32 in
+            let parameter_types = Array.init (List.length arguments) (Fun.const i32) in
+            Llvm.function_type return_type parameter_types
+         in
          (match Llvm.lookup_function name md with
           | Some define ->
-             Llvm.build_call define (Array.of_list arguments) "" builder
+             print_endline "Just before build_call";
+             Llvm.build_call define_type define (Array.of_list arguments) "" builder
           | None -> failwith ("Could not find funciton " ^ name)
          )
 
@@ -89,7 +98,9 @@ let functions: Ast.define list =
 
 
 let main () =
+  print_endline "Starting compiler";
   List.iter Compiler.compile_define functions;
+  print_endline "Compiled, dumping output";
   print_endline @@ Llvm.string_of_llmodule Compiler.md
 
 
