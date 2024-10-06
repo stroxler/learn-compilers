@@ -1,28 +1,23 @@
 # Getting started
 
-Kick off by creating a version 3.0 dune-project and a trivial dune file
 
-```lisp
-(executable
-  (name main)
-  (libraries llvm))
+## Bootstrapping
+
+Assuming you have a flake-enabled `nix` available, you can bootstrap
+a dev environment using
 ```
-and run `dune exec ./main.exe` to see whether the opam switch is up
-and running with the `llvm` package installed.
+nix develop -c $SHELL
+```
 
-After that follow along with the really nice tutorial video at
-https://www.youtube.com/watch?v=Brcs3GW5-hM
-where Colin James walks through building an arithmetic calculator
-language with llvm and ocaml bindings.
+This should get you rolling against LLVM 18 (the latest version as of when
+the `flake.lock` was created).
 
-Note that in that tutorial, he is using a pre-16 version of llvm because
-the `build_call` signature looks the same as what I have (in the most
-recent version, the return type is part of `build_call`).
+## How to develop
 
-I extended his example a bit to include the `Call` form from the AST.
-
-You can view the output with `dune exec ./main.exe`.
-
+Run `dune build` to compile, and view the output of compiling the AST
+(which is directly written into OCaml - this is a tiny demo with no parser)
+run `_build/default/main.exe`. You can redirect stdout to a file in order to
+then use `llc` against it.
 
 To actually compile code (either `demo.ll`, which is a hand-written
 example, or the output of the compiler) into assembly, you can run

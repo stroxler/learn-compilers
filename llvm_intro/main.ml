@@ -48,7 +48,6 @@ module Compiler = struct
          in
          (match Llvm.lookup_function name md with
           | Some define ->
-             print_endline "Just before build_call";
              Llvm.build_call define_type define (Array.of_list arguments) "" builder
           | None -> failwith ("Could not find funciton " ^ name)
          )
@@ -98,9 +97,7 @@ let functions: Ast.define list =
 
 
 let main () =
-  print_endline "Starting compiler";
   List.iter Compiler.compile_define functions;
-  print_endline "Compiled, dumping output";
   print_endline @@ Llvm.string_of_llmodule Compiler.md
 
 
