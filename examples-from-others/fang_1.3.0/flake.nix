@@ -29,6 +29,7 @@
         logs
         menhir
         odoc
+				ocaml-lsp
         ppx_expect
         ppx_inline_test
       ]);
